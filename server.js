@@ -40,7 +40,7 @@ if (!fs.existsSync(usersPath)) {
     usersPath,
     JSON.stringify(
       [
-        { username: "admin", password: "i9@2026", nome: "Administrador" },
+        { username: "admin", password: "adm@2026", nome: "Administrador" },
         { username: "professor", password: "senac123", nome: "Professor" },
       ],
       null,

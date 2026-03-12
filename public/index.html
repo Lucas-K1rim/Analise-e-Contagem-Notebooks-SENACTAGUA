@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>I9 - Demandas de Professores</title>
+    <title>Lunote - Registro de Demandas</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -19,16 +19,17 @@
         <div class="hero-top">
           <div>
             <p class="tag">SENAC DF</p>
-            <h1>I9 - Registro de Demandas</h1>
+            <h1>Lunote - Registro de Demandas</h1>
             <p class="subtitle">
               Lance pedidos dos professores e acompanhe o consolidado mensal em tempo real.
             </p>
           </div>
           <div id="auth-box" class="auth-box logged-out">
+            <p class="login-titulo">Acesse o sistema</p>
             <form id="login-form" class="login-form">
-              <input id="login-username" type="text" placeholder="Usuário" required />
-              <input id="login-password" type="password" placeholder="Senha" required />
-              <button type="submit" class="primary">Entrar</button>
+              <input id="login-username" type="text" placeholder="Usuário" autocomplete="username" required />
+              <input id="login-password" type="password" placeholder="Senha" autocomplete="current-password" required />
+              <button type="submit" class="primary btn-orange">Entrar</button>
             </form>
             <div id="user-info" class="user-info">
               <span id="user-name"></span>

@@ -1,12 +1,13 @@
 :root {
-  --bg-1: #f2efe4;
-  --bg-2: #d6e9df;
-  --ink: #123126;
-  --ink-soft: #375546;
-  --card: #fffdf8;
-  --accent: #2f7a4d;
-  --accent-2: #1f5f39;
-  --line: #c6d5c8;
+  --bg-1: #eef3fa;
+  --bg-2: #d0e4f5;
+  --ink: #00204e;
+  --ink-soft: #4a6080;
+  --card: #ffffff;
+  --accent: #0066b3;
+  --accent-2: #003878;
+  --orange: #f7941d;
+  --line: #bdd1e8;
 }
 
 * {
@@ -19,7 +20,7 @@ body {
   color: var(--ink);
   min-height: 100vh;
   background: radial-gradient(circle at 10% 15%, var(--bg-2), transparent 45%),
-    linear-gradient(135deg, var(--bg-1), #e6f0ea);
+    linear-gradient(135deg, var(--bg-1), #daeaf8);
 }
 
 .bg-shape {
@@ -29,7 +30,7 @@ body {
   width: 280px;
   height: 280px;
   border-radius: 50%;
-  background: linear-gradient(45deg, #75b78f, #2f7a4d);
+  background: linear-gradient(45deg, #4d9fd6, #003878);
   opacity: 0.25;
   filter: blur(2px);
 }
@@ -52,17 +53,36 @@ body {
 }
 
 .auth-box {
-  min-width: min(360px, 100%);
-  background: #f3f8f4;
+  min-width: min(320px, 100%);
+  background: #fff;
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 0.8rem;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 102, 179, 0.15);
+}
+
+.login-titulo {
+  background: var(--accent-2);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 0.65rem 1rem;
+  margin: 0;
 }
 
 .login-form {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 1rem;
+}
+
+.auth-box .message {
+  padding: 0 1rem 0.6rem;
+  margin-top: -0.3rem;
+  min-height: auto;
 }
 
 .user-info {
@@ -70,6 +90,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
+  padding: 0.9rem 1rem;
 }
 
 .auth-box.logged-in .login-form {
@@ -107,7 +128,7 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 1rem;
-  box-shadow: 0 12px 32px rgba(18, 49, 38, 0.1);
+  box-shadow: 0 12px 32px rgba(0, 56, 120, 0.1);
   animation: fade-up 0.65s ease-out;
 }
 
@@ -119,7 +140,7 @@ h1 {
 
 .tab {
   border: 1px solid var(--line);
-  background: #f4f8f5;
+  background: #eef3fa;
   color: var(--ink-soft);
   border-radius: 999px;
   padding: 0.55rem 1rem;
@@ -182,9 +203,15 @@ button {
 }
 
 .secondary {
-  background: #eaf3ec;
+  background: #eef3fa;
   color: var(--accent-2);
   border: 1px solid var(--line);
+}
+
+.btn-orange {
+  background: var(--orange);
+  color: #fff;
+  border: 0;
 }
 
 .message {
@@ -213,7 +240,7 @@ button {
 }
 
 .kpis article {
-  background: #f3f8f4;
+  background: #eef3fa;
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 0.7rem 0.9rem;
@@ -241,7 +268,7 @@ button {
 }
 
 .chart-wrap {
-  background: #f3f8f4;
+  background: #eef3fa;
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 1rem;
@@ -284,12 +311,12 @@ table {
 th,
 td {
   padding: 0.7rem;
-  border-bottom: 1px solid #e5ede7;
+  border-bottom: 1px solid #d8e8f4;
   text-align: left;
 }
 
 thead {
-  background: #f3f8f4;
+  background: #eef3fa;
 }
 
 @media (max-width: 900px) {
@@ -310,10 +337,6 @@ thead {
   .auth-box {
     width: 100%;
     min-width: 0;
-  }
-
-  .login-form {
-    grid-template-columns: 1fr;
   }
 
   .form-grid,
