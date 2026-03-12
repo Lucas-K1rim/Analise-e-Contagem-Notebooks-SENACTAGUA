@@ -157,7 +157,7 @@ async function initDb() {
     await pool.query(
       `INSERT INTO users (username, password, nome)
        VALUES ($1, $2, $3)
-       ON CONFLICT (username) DO NOTHING`,
+       ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password, nome = EXCLUDED.nome`,
       [user.username, user.password, user.nome || user.username]
     );
   }
