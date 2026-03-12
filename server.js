@@ -12,11 +12,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DATABASE_URL = process.env.DATABASE_URL;
 const SESSION_SECRET = process.env.SESSION_SECRET || "i9-session-dev";
-
-if (!DATABASE_URL) {
-  console.error("DATABASE_URL nao configurada. Crie o arquivo .env com base no .env.example.");
-  process.exit(1);
-}
+const usePostgres = Boolean(DATABASE_URL);
 
 const dbDir = path.join(__dirname, "data");
 if (!fs.existsSync(dbDir)) {
@@ -27,13 +23,14 @@ const dataPath = path.join(dbDir, "demandas.json");
 const usersPath = path.join(dbDir, "users.json");
 
 const authSessions = new Map();
-
-const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl: DATABASE_URL.includes("render.com") || DATABASE_URL.includes("railway.app")
-    ? { rejectUnauthorized: false }
-    : false,
-});
+const pool = usePostgres
+  ? new Pool({
+      connectionString: DATABASE_URL,
+      ssl: DATABASE_URL.includes("render.com") || DATABASE_URL.includes("railway.app")
+        ? { rejectUnauthorized: false }
+        : false,
+    })
+  : null;
 
 if (!fs.existsSync(usersPath)) {
   fs.writeFileSync(
@@ -48,6 +45,10 @@ if (!fs.existsSync(usersPath)) {
     ),
     "utf8"
   );
+}
+
+if (!fs.existsSync(dataPath)) {
+  fs.writeFileSync(dataPath, "[]", "utf8");
 }
 
 app.use(express.json());
@@ -71,6 +72,20 @@ function readUsers() {
   }
 }
 
+function readDemandas() {
+  const raw = fs.readFileSync(dataPath, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDemandas(demandas) {
+  fs.writeFileSync(dataPath, JSON.stringify(demandas, null, 2), "utf8");
+}
+
 function getAuthToken(req) {
   const authHeader = req.headers.authorization || "";
   const parts = authHeader.split(" ");
@@ -91,15 +106,37 @@ function authMiddleware(req, res, next) {
 }
 
 function getDemandasDoMes(month) {
-  return pool
-    .query(
-      `SELECT id, professor, quantidade, data::text AS data, created_by, updated_by
-       FROM demandas
-       WHERE to_char(data, 'YYYY-MM') = $1
-       ORDER BY data ASC, professor ASC, id ASC`,
-      [month]
-    )
-    .then((result) => result.rows);
+  if (usePostgres) {
+    return pool
+      .query(
+        `SELECT id, professor, quantidade, data::text AS data, created_by, updated_by
+         FROM demandas
+         WHERE to_char(data, 'YYYY-MM') = $1
+         ORDER BY data ASC, professor ASC, id ASC`,
+        [month]
+      )
+      .then((result) => result.rows);
+  }
+
+  return Promise.resolve(
+    readDemandas()
+      .filter((item) => String(item.data || "").slice(0, 7) === month)
+      .sort((a, b) => {
+        if (a.data !== b.data) return String(a.data).localeCompare(String(b.data));
+        if (a.professor !== b.professor) {
+          return String(a.professor).localeCompare(String(b.professor));
+        }
+        return Number(a.id || 0) - Number(b.id || 0);
+      })
+      .map((item) => ({
+        id: item.id,
+        professor: item.professor,
+        quantidade: Number(item.quantidade || 0),
+        data: item.data,
+        created_by: item.created_by || "",
+        updated_by: item.updated_by || "",
+      }))
+  );
 }
 
 async function getResumoMensal(month) {
@@ -130,6 +167,11 @@ async function getResumoMensal(month) {
 }
 
 async function initDb() {
+  if (!usePostgres) {
+    console.log("DATABASE_URL nao configurada. Iniciando em modo arquivo local (JSON).");
+    return;
+  }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -204,15 +246,22 @@ app.post("/api/login", async (req, res) => {
     return res.status(400).json({ error: "Informe usuario e senha." });
   }
 
-  const result = await pool.query(
-    `SELECT username, nome
-     FROM users
-     WHERE username = $1 AND password = $2
-     LIMIT 1`,
-    [String(username).trim(), String(password)]
-  );
-
-  const user = result.rows[0];
+  let user = null;
+  if (usePostgres) {
+    const result = await pool.query(
+      `SELECT username, nome
+       FROM users
+       WHERE username = $1 AND password = $2
+       LIMIT 1`,
+      [String(username).trim(), String(password)]
+    );
+    user = result.rows[0] || null;
+  } else {
+    user =
+      readUsers().find(
+        (item) => item.username === String(username).trim() && item.password === String(password)
+      ) || null;
+  }
 
   if (!user) {
     return res.status(401).json({ error: "Credenciais invalidas." });
@@ -249,14 +298,33 @@ app.post("/api/demandas", async (req, res) => {
     return res.status(400).json({ error: "Data deve estar no formato YYYY-MM-DD." });
   }
 
-  const insertResult = await pool.query(
-    `INSERT INTO demandas (professor, quantidade, data, created_by)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id`,
-    [professor.trim(), quantidadeNumero, data, req.authUser.username]
-  );
+  if (usePostgres) {
+    const insertResult = await pool.query(
+      `INSERT INTO demandas (professor, quantidade, data, created_by)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [professor.trim(), quantidadeNumero, data, req.authUser.username]
+    );
 
-  return res.status(201).json({ id: insertResult.rows[0].id });
+    return res.status(201).json({ id: insertResult.rows[0].id });
+  }
+
+  const demandas = readDemandas();
+  const nextId =
+    demandas.length > 0 ? Math.max(...demandas.map((item) => Number(item.id) || 0)) + 1 : 1;
+
+  demandas.push({
+    id: nextId,
+    professor: professor.trim(),
+    quantidade: quantidadeNumero,
+    data,
+    created_at: new Date().toISOString(),
+    created_by: req.authUser.username,
+    updated_by: "",
+  });
+  writeDemandas(demandas);
+
+  return res.status(201).json({ id: nextId });
 });
 
 app.get("/api/demandas", async (req, res) => {
@@ -291,20 +359,41 @@ app.put("/api/demandas/:id", async (req, res) => {
     return res.status(400).json({ error: "Data deve estar no formato YYYY-MM-DD." });
   }
 
-  const updateResult = await pool.query(
-    `UPDATE demandas
-     SET professor = $1,
-         quantidade = $2,
-         data = $3,
-         updated_at = NOW(),
-         updated_by = $4
-     WHERE id = $5`,
-    [professor.trim(), quantidadeNumero, data, req.authUser.username, id]
-  );
+  if (usePostgres) {
+    const updateResult = await pool.query(
+      `UPDATE demandas
+       SET professor = $1,
+           quantidade = $2,
+           data = $3,
+           updated_at = NOW(),
+           updated_by = $4
+       WHERE id = $5`,
+      [professor.trim(), quantidadeNumero, data, req.authUser.username, id]
+    );
 
-  if (updateResult.rowCount === 0) {
+    if (updateResult.rowCount === 0) {
+      return res.status(404).json({ error: "Lancamento nao encontrado." });
+    }
+
+    return res.status(200).json({ ok: true });
+  }
+
+  const demandas = readDemandas();
+  const index = demandas.findIndex((item) => Number(item.id) === id);
+
+  if (index < 0) {
     return res.status(404).json({ error: "Lancamento nao encontrado." });
   }
+
+  demandas[index] = {
+    ...demandas[index],
+    professor: professor.trim(),
+    quantidade: quantidadeNumero,
+    data,
+    updated_at: new Date().toISOString(),
+    updated_by: req.authUser.username,
+  };
+  writeDemandas(demandas);
 
   return res.status(200).json({ ok: true });
 });
@@ -315,11 +404,24 @@ app.delete("/api/demandas/:id", async (req, res) => {
     return res.status(400).json({ error: "Id invalido." });
   }
 
-  const deleteResult = await pool.query("DELETE FROM demandas WHERE id = $1", [id]);
+  if (usePostgres) {
+    const deleteResult = await pool.query("DELETE FROM demandas WHERE id = $1", [id]);
 
-  if (deleteResult.rowCount === 0) {
+    if (deleteResult.rowCount === 0) {
+      return res.status(404).json({ error: "Lancamento nao encontrado." });
+    }
+
+    return res.status(204).send();
+  }
+
+  const demandas = readDemandas();
+  const index = demandas.findIndex((item) => Number(item.id) === id);
+  if (index < 0) {
     return res.status(404).json({ error: "Lancamento nao encontrado." });
   }
+
+  demandas.splice(index, 1);
+  writeDemandas(demandas);
 
   return res.status(204).send();
 });
