@@ -95,6 +95,10 @@
             </article>
           </div>
 
+          <div class="chart-wrap">
+            <canvas id="grafico-professores"></canvas>
+          </div>
+
           <h3 class="table-title">Total por Professor</h3>
           <div class="table-wrap">
             <table>
@@ -109,6 +113,9 @@
           </div>
 
           <h3 class="table-title">Lançamentos do Mês</h3>
+          <div class="filtro-wrap">
+            <input type="text" id="filtro-lancamentos" placeholder="Filtrar por professor..." />
+          </div>
           <div class="table-wrap">
             <table>
               <thead>
@@ -126,6 +133,7 @@
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

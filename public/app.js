@@ -23,9 +23,12 @@ const tabelaProfessores = document.getElementById("tabela-professores");
 const tabelaLancamentos = document.getElementById("tabela-lancamentos");
 const btnExportExcel = document.getElementById("btn-export-excel");
 const btnExportPdf = document.getElementById("btn-export-pdf");
+const filtroLancamentos = document.getElementById("filtro-lancamentos");
 
 let authToken = localStorage.getItem("i9_token") || "";
 let authUser = localStorage.getItem("i9_user") || "";
+let graficoProfessores = null;
+let demandasCache = [];
 
 function hojeIso() {
   return new Date().toISOString().slice(0, 10);
@@ -227,6 +230,60 @@ async function excluirLancamento(id) {
   }
 }
 
+function renderizarGrafico(porProfessor) {
+  const canvas = document.getElementById("grafico-professores");
+  if (!canvas) return;
+
+  const labels = porProfessor.map((item) => item.professor);
+  const valores = porProfessor.map((item) => item.total);
+
+  if (graficoProfessores) {
+    graficoProfessores.data.labels = labels;
+    graficoProfessores.data.datasets[0].data = valores;
+    graficoProfessores.update();
+    return;
+  }
+
+  graficoProfessores = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Quantidade total",
+          data: valores,
+          backgroundColor: "#2f7a4d",
+          borderRadius: 6,
+        },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { precision: 0 },
+        },
+      },
+    },
+  });
+}
+
+function aplicarFiltro() {
+  const termo = filtroLancamentos ? filtroLancamentos.value.toLowerCase().trim() : "";
+  const filtradas = termo
+    ? demandasCache.filter((item) =>
+        String(item.professor || "").toLowerCase().includes(termo)
+      )
+    : demandasCache;
+  preencherTabelaLancamentos(filtradas);
+}
+
 async function atualizarResumo() {
   const month = mesInput.value;
   if (!month) return;
@@ -236,10 +293,12 @@ async function atualizarResumo() {
     apiFetch(`/api/demandas?month=${month}`),
   ]);
 
+  demandasCache = demandas;
   totalGeralEl.textContent = resumo.totalGeral;
   qtdeProfessoresEl.textContent = resumo.porProfessor.length;
+  renderizarGrafico(resumo.porProfessor);
   preencherTabelaProfessores(resumo.porProfessor);
-  preencherTabelaLancamentos(demandas);
+  aplicarFiltro();
 }
 
 async function exportarArquivo(tipo) {
@@ -329,6 +388,7 @@ async function fazerLogout() {
 form.addEventListener("submit", salvarDemanda);
 loginForm.addEventListener("submit", fazerLogin);
 btnLogout.addEventListener("click", fazerLogout);
+filtroLancamentos.addEventListener("input", aplicarFiltro);
 
 btnAtualizar.addEventListener("click", async () => {
   try {

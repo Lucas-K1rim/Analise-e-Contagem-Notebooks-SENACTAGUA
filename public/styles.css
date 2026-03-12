@@ -240,6 +240,23 @@ button {
   overflow: hidden;
 }
 
+.chart-wrap {
+  background: #f3f8f4;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+  margin: 1rem 0 0.8rem;
+  height: 260px;
+}
+
+.filtro-wrap {
+  margin-bottom: 0.6rem;
+}
+
+.filtro-wrap input {
+  width: 100%;
+}
+
 .btn-row {
   display: flex;
   gap: 0.45rem;
