@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>I9 - Demandas de Professores</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape"></div>
+    <main class="container">
+      <header class="hero">
+        <div class="hero-top">
+          <div>
+            <p class="tag">SENAC DF</p>
+            <h1>I9 - Registro de Demandas</h1>
+            <p class="subtitle">
+              Lance pedidos dos professores e acompanhe o consolidado mensal em tempo real.
+            </p>
+          </div>
+          <div id="auth-box" class="auth-box logged-out">
+            <form id="login-form" class="login-form">
+              <input id="login-username" type="text" placeholder="Usuário" required />
+              <input id="login-password" type="password" placeholder="Senha" required />
+              <button type="submit" class="primary">Entrar</button>
+            </form>
+            <div id="user-info" class="user-info">
+              <span id="user-name"></span>
+              <button id="btn-logout" class="secondary" type="button">Sair</button>
+            </div>
+            <p id="login-msg" class="message"></p>
+          </div>
+        </div>
+      </header>
+
+      <section id="app-card" class="card hidden">
+        <div class="tabs" role="tablist" aria-label="Abas principais">
+          <button class="tab active" data-tab="lancamentos" role="tab">
+            Lançar Demanda
+          </button>
+          <button class="tab" data-tab="resumo" role="tab">
+            Total do Mês
+          </button>
+        </div>
+
+        <div id="lancamentos" class="tab-panel active" role="tabpanel">
+          <form id="form-demanda" class="form-grid">
+            <label>
+              Professor
+              <input type="text" id="professor" required placeholder="Ex: Alberto" />
+            </label>
+
+            <label>
+              Quantidade
+              <input type="number" id="quantidade" min="1" required placeholder="Ex: 17" />
+            </label>
+
+            <label>
+              Data
+              <input type="date" id="data" required />
+            </label>
+
+            <button type="submit" class="primary">Salvar Lançamento</button>
+          </form>
+          <p id="form-msg" class="message"></p>
+        </div>
+
+        <div id="resumo" class="tab-panel" role="tabpanel">
+          <div class="resumo-head">
+            <label>
+              Mês
+              <input type="month" id="mes" />
+            </label>
+            <div class="acoes-resumo">
+              <button id="btn-atualizar" class="secondary" type="button">Atualizar</button>
+              <button id="btn-export-excel" class="secondary" type="button">Exportar Excel</button>
+              <button id="btn-export-pdf" class="secondary" type="button">Exportar PDF</button>
+            </div>
+          </div>
+
+          <div class="kpis">
+            <article>
+              <h3>Total Geral</h3>
+              <p id="total-geral">0</p>
+            </article>
+            <article>
+              <h3>Professores no Mês</h3>
+              <p id="qtde-professores">0</p>
+            </article>
+          </div>
+
+          <h3 class="table-title">Total por Professor</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Professor</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-professores"></tbody>
+            </table>
+          </div>
+
+          <h3 class="table-title">Lançamentos do Mês</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Professor</th>
+                  <th>Quantidade</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-lancamentos"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "projeto-i9-demandas",
+  "version": "1.0.0",
+  "description": "Sistema simples para registrar e consolidar demandas de professores",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
+    "express-async-errors": "^3.1.1",
+    "express": "^4.21.2",
+    "pg": "^8.13.3",
+    "pdfkit": "^0.15.1"
+  }
+}

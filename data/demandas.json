@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "professor": "Juliana",
+    "quantidade": 12,
+    "data": "2026-03-11",
+    "created_at": "2026-03-11T23:52:55.865Z"
+  },
+  {
+    "id": 2,
+    "professor": "Juliana",
+    "quantidade": 11,
+    "data": "2026-03-12",
+    "created_at": "2026-03-11T23:53:06.196Z"
+  },
+  {
+    "id": 3,
+    "professor": "Olívio",
+    "quantidade": 121,
+    "data": "2026-03-11",
+    "created_at": "2026-03-11T23:53:18.514Z"
+  }
+]
