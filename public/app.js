@@ -57,6 +57,18 @@ function formatarTurno(turno) {
   return "Noite";
 }
 
+function normalizarNomeProfessor(nome) {
+  const base = String(nome || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+  // Correcao de variacoes comuns ja existentes no historico.
+  if (base === "lewestter") return "lewester";
+  return base;
+}
+
 function preencherSelectProfessores(professores) {
   const valorAtual = professorInput.value;
   professorInput.innerHTML = "";
@@ -195,13 +207,18 @@ function preencherTabelaProfessores(linhas) {
 
   if (!linhas.length) {
     tabelaProfessores.innerHTML =
-      '<tr><td colspan="2">Nenhum lançamento no mês.</td></tr>';
+      '<tr><td colspan="3">Nenhum lançamento no mês.</td></tr>';
     return;
   }
 
   linhas.forEach((item) => {
+    const chave = normalizarNomeProfessor(item.professor);
+    const professorCadastro = professoresCache.find(
+      (prof) => normalizarNomeProfessor(prof.nome) === chave
+    );
+    const turno = professorCadastro ? formatarTurno(professorCadastro.turno) : "-";
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${item.professor}</td><td>${item.total}</td>`;
+    tr.innerHTML = `<td>${item.professor}</td><td>${turno}</td><td>${item.total}</td>`;
     tabelaProfessores.appendChild(tr);
   });
 }
