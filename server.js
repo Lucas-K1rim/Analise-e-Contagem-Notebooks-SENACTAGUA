@@ -111,7 +111,9 @@ async function getDemandasDoMes(month) {
   if (usePostgres) {
     return pool
       .query(
-        `SELECT id, professor, quantidade, data::text AS data, created_by, updated_by
+        `SELECT id, professor, quantidade, data::text AS data,
+                COALESCE(manual, FALSE) AS manual,
+                created_by, updated_by
          FROM demandas
          WHERE to_char(data, 'YYYY-MM') = $1
          ORDER BY data ASC, professor ASC, id ASC`,
@@ -128,7 +130,11 @@ async function getDemandasDoMes(month) {
         const p = String(a.professor).localeCompare(String(b.professor));
         if (p !== 0) return p;
         return (a.id || 0) - (b.id || 0);
-      });
+      })
+      .map((item) => ({
+        ...item,
+        manual: Boolean(item.manual),
+      }));
   }
 }
 
@@ -177,11 +183,17 @@ async function initDb() {
       professor TEXT NOT NULL,
       quantidade INTEGER NOT NULL CHECK (quantidade > 0),
       data DATE NOT NULL,
+      manual BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ,
       created_by TEXT,
       updated_by TEXT
     );
+  `);
+
+  await pool.query(`
+    ALTER TABLE demandas
+    ADD COLUMN IF NOT EXISTS manual BOOLEAN NOT NULL DEFAULT FALSE;
   `);
 
   const localUsers = readUsers();
@@ -213,12 +225,13 @@ async function initDb() {
       for (const item of jsonDemandas) {
         if (!item.professor || !item.data || !Number(item.quantidade)) continue;
         await pool.query(
-          `INSERT INTO demandas (professor, quantidade, data, created_at, created_by, updated_by)
-           VALUES ($1, $2, $3, COALESCE($4::timestamptz, NOW()), $5, $6)`,
+          `INSERT INTO demandas (professor, quantidade, data, manual, created_at, created_by, updated_by)
+           VALUES ($1, $2, $3, $4, COALESCE($5::timestamptz, NOW()), $6, $7)`,
           [
             String(item.professor).trim(),
             Number(item.quantidade),
             String(item.data),
+            Boolean(item.manual),
             item.created_at || null,
             item.created_by || null,
             item.updated_by || null,
@@ -322,7 +335,7 @@ app.post("/api/logout", authMiddleware, (req, res) => {
 app.use("/api", authMiddleware);
 
 app.post("/api/demandas", async (req, res) => {
-  const { professor, quantidade, data } = req.body;
+  const { professor, quantidade, data, manual } = req.body;
 
   if (!professor || typeof professor !== "string" || !professor.trim()) {
     return res.status(400).json({ error: "Professor e obrigatorio." });
@@ -337,12 +350,14 @@ app.post("/api/demandas", async (req, res) => {
     return res.status(400).json({ error: "Data deve estar no formato YYYY-MM-DD." });
   }
 
+  const manualFlag = Boolean(manual);
+
   if (usePostgres) {
     const insertResult = await pool.query(
-      `INSERT INTO demandas (professor, quantidade, data, created_by)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO demandas (professor, quantidade, data, manual, created_by)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING id`,
-      [professor.trim(), quantidadeNumero, data, req.authUser.username]
+      [professor.trim(), quantidadeNumero, data, manualFlag, req.authUser.username]
     );
     return res.status(201).json({ id: insertResult.rows[0].id });
   } else {
@@ -353,6 +368,7 @@ app.post("/api/demandas", async (req, res) => {
       professor: professor.trim(),
       quantidade: quantidadeNumero,
       data,
+      manual: manualFlag,
       created_at: new Date().toISOString(),
       created_by: req.authUser.username,
       updated_by: null,
@@ -380,7 +396,7 @@ app.put("/api/demandas/:id", async (req, res) => {
     return res.status(400).json({ error: "Id invalido." });
   }
 
-  const { professor, quantidade, data } = req.body;
+  const { professor, quantidade, data, manual } = req.body;
 
   if (!professor || typeof professor !== "string" || !professor.trim()) {
     return res.status(400).json({ error: "Professor e obrigatorio." });
@@ -395,16 +411,19 @@ app.put("/api/demandas/:id", async (req, res) => {
     return res.status(400).json({ error: "Data deve estar no formato YYYY-MM-DD." });
   }
 
+  const manualFlag = Boolean(manual);
+
   if (usePostgres) {
     const updateResult = await pool.query(
       `UPDATE demandas
        SET professor = $1,
            quantidade = $2,
            data = $3,
+           manual = $4,
            updated_at = NOW(),
-           updated_by = $4
-       WHERE id = $5`,
-      [professor.trim(), quantidadeNumero, data, req.authUser.username, id]
+           updated_by = $5
+       WHERE id = $6`,
+      [professor.trim(), quantidadeNumero, data, manualFlag, req.authUser.username, id]
     );
     if (updateResult.rowCount === 0)
       return res.status(404).json({ error: "Lancamento nao encontrado." });
@@ -417,6 +436,7 @@ app.put("/api/demandas/:id", async (req, res) => {
       professor: professor.trim(),
       quantidade: quantidadeNumero,
       data,
+      manual: manualFlag,
       updated_at: new Date().toISOString(),
       updated_by: req.authUser.username,
     };
@@ -480,10 +500,16 @@ app.get("/api/export/excel", async (req, res) => {
     { header: "Data", key: "data", width: 14 },
     { header: "Professor", key: "professor", width: 30 },
     { header: "Quantidade", key: "quantidade", width: 14 },
+    { header: "Tipo", key: "tipo", width: 12 },
     { header: "Criado por", key: "created_by", width: 16 },
     { header: "Atualizado por", key: "updated_by", width: 16 },
   ];
-  wsLanc.addRows(resumo.demandas);
+  wsLanc.addRows(
+    resumo.demandas.map((item) => ({
+      ...item,
+      tipo: item.manual ? "Manual" : "Normal",
+    }))
+  );
 
   const safeMonth = month.replace(/[^\d-]/g, "");
   const fileName = `i9-resumo-${safeMonth}.xlsx`;
@@ -539,7 +565,9 @@ app.get("/api/export/pdf", async (req, res) => {
       doc
         .fontSize(10)
         .text(
-          `${item.data} | ${item.professor} | ${item.quantidade} | criado por: ${
+          `${item.data} | ${item.professor} | ${item.quantidade} | ${
+            item.manual ? "Manual" : "Normal"
+          } | criado por: ${
             item.created_by || "-"
           }`
         );

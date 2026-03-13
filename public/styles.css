@@ -316,6 +316,40 @@ button {
   width: 100%;
 }
 
+.manual-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.72rem;
+  background: #f8fbff;
+}
+
+.manual-toggle input {
+  width: 18px;
+  height: 18px;
+}
+
+.tipo-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.tipo-badge.manual {
+  background: #fff4e4;
+  color: #9a5a00;
+}
+
+.tipo-badge.normal {
+  background: #eaf6ec;
+  color: #1f6c3f;
+}
+
 .btn-row {
   display: flex;
   gap: 0.45rem;

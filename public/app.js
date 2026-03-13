@@ -20,6 +20,7 @@ const form = document.getElementById("form-demanda");
 const professorInput = document.getElementById("professor");
 const quantidadeInput = document.getElementById("quantidade");
 const dataInput = document.getElementById("data");
+const manualInput = document.getElementById("manual");
 const formMsg = document.getElementById("form-msg");
 const mesInput = document.getElementById("mes");
 const btnAtualizar = document.getElementById("btn-atualizar");
@@ -109,6 +110,7 @@ async function salvarDemanda(event) {
       professor: professorInput.value.trim(),
       quantidade: Number(quantidadeInput.value),
       data: dataInput.value,
+      manual: manualInput.checked,
     };
 
     const result = await apiFetch("/api/demandas", {
@@ -123,6 +125,7 @@ async function salvarDemanda(event) {
 
     form.reset();
     dataInput.value = hojeIso();
+    manualInput.checked = false;
     formMsg.textContent = "Lançamento salvo com sucesso.";
     await atualizarResumo();
   } catch (error) {
@@ -152,7 +155,7 @@ function preencherTabelaLancamentos(linhas) {
 
   if (!linhas.length) {
     tabelaLancamentos.innerHTML =
-      '<tr><td colspan="3">Nenhum lançamento no mês.</td></tr>';
+      '<tr><td colspan="5">Nenhum lançamento no mês.</td></tr>';
     return;
   }
 
@@ -167,6 +170,12 @@ function preencherTabelaLancamentos(linhas) {
 
     const tdQuantidade = document.createElement("td");
     tdQuantidade.textContent = item.quantidade;
+
+    const tdTipo = document.createElement("td");
+    const badge = document.createElement("span");
+    badge.className = item.manual ? "tipo-badge manual" : "tipo-badge normal";
+    badge.textContent = item.manual ? "Manual" : "Normal";
+    tdTipo.appendChild(badge);
 
     const tdAcoes = document.createElement("td");
     const rowActions = document.createElement("div");
@@ -191,6 +200,7 @@ function preencherTabelaLancamentos(linhas) {
     tr.appendChild(tdData);
     tr.appendChild(tdProfessor);
     tr.appendChild(tdQuantidade);
+    tr.appendChild(tdTipo);
     tr.appendChild(tdAcoes);
     tabelaLancamentos.appendChild(tr);
   });
@@ -206,6 +216,12 @@ async function editarLancamento(item) {
   const data = prompt("Data (YYYY-MM-DD):", item.data);
   if (data === null) return;
 
+  const manual = confirm(
+    `Este lancamento e manual?\n\nOK = Manual\nCancelar = Normal\n\nAtual: ${
+      item.manual ? "Manual" : "Normal"
+    }`
+  );
+
   const quantidade = Number(quantidadeTexto);
   if (!Number.isInteger(quantidade) || quantidade <= 0) {
     alert("Quantidade invalida.");
@@ -216,7 +232,7 @@ async function editarLancamento(item) {
     await apiFetch(`/api/demandas/${item.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ professor, quantidade, data }),
+      body: JSON.stringify({ professor, quantidade, data, manual }),
     });
     await atualizarResumo();
   } catch (error) {
