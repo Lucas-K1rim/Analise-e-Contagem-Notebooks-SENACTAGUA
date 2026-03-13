@@ -31,6 +31,17 @@
               <input id="login-password" type="password" placeholder="Senha" autocomplete="current-password" required />
               <button type="submit" class="primary btn-orange">Entrar</button>
             </form>
+            <details class="register-box">
+              <summary>Criar nova conta</summary>
+              <form id="register-form" class="register-form">
+                <input id="register-name" type="text" placeholder="Nome completo" required />
+                <input id="register-username" type="text" placeholder="Novo usuário" required />
+                <input id="register-password" type="password" placeholder="Nova senha" required />
+                <input id="register-password-confirm" type="password" placeholder="Confirmar senha" required />
+                <button type="submit" class="secondary" >Criar conta</button>
+              </form>
+              <p id="register-msg" class="message register-msg"></p>
+            </details>
             <div id="user-info" class="user-info">
               <span id="user-name"></span>
               <button id="btn-logout" class="secondary" type="button">Sair</button>

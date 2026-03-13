@@ -7,6 +7,12 @@ const loginForm = document.getElementById("login-form");
 const loginUsernameInput = document.getElementById("login-username");
 const loginPasswordInput = document.getElementById("login-password");
 const loginMsg = document.getElementById("login-msg");
+const registerForm = document.getElementById("register-form");
+const registerNameInput = document.getElementById("register-name");
+const registerUsernameInput = document.getElementById("register-username");
+const registerPasswordInput = document.getElementById("register-password");
+const registerPasswordConfirmInput = document.getElementById("register-password-confirm");
+const registerMsg = document.getElementById("register-msg");
 const userNameEl = document.getElementById("user-name");
 const btnLogout = document.getElementById("btn-logout");
 
@@ -341,37 +347,76 @@ async function exportarArquivo(tipo) {
   URL.revokeObjectURL(url);
 }
 
+async function executarLogin(username, password) {
+  const response = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.error || "Falha no login.");
+  }
+
+  authToken = result.token;
+  authUser = result.user.nome;
+  localStorage.setItem("i9_token", authToken);
+  localStorage.setItem("i9_user", authUser);
+  setLoginState(true, authUser);
+  loginMsg.textContent = "";
+  loginForm.reset();
+  await atualizarResumo();
+}
+
 async function fazerLogin(event) {
   event.preventDefault();
   loginMsg.textContent = "Entrando...";
   loginMsg.style.color = "#1f5f39";
 
   try {
-    const response = await fetch("/api/login", {
+    await executarLogin(loginUsernameInput.value.trim(), loginPasswordInput.value);
+  } catch (error) {
+    loginMsg.textContent = error.message;
+    loginMsg.style.color = "#b42318";
+  }
+}
+
+async function criarConta(event) {
+  event.preventDefault();
+  registerMsg.textContent = "Criando conta...";
+  registerMsg.style.color = "#1f5f39";
+
+  const nome = registerNameInput.value.trim();
+  const username = registerUsernameInput.value.trim().toLowerCase();
+  const password = registerPasswordInput.value;
+  const confirmPassword = registerPasswordConfirmInput.value;
+
+  if (password !== confirmPassword) {
+    registerMsg.textContent = "As senhas nao conferem.";
+    registerMsg.style.color = "#b42318";
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: loginUsernameInput.value.trim(),
-        password: loginPasswordInput.value,
-      }),
+      body: JSON.stringify({ nome, username, password }),
     });
 
     const result = await response.json();
     if (!response.ok) {
-      throw new Error(result.error || "Falha no login.");
+      throw new Error(result.error || "Erro ao criar conta.");
     }
 
-    authToken = result.token;
-    authUser = result.user.nome;
-    localStorage.setItem("i9_token", authToken);
-    localStorage.setItem("i9_user", authUser);
-    setLoginState(true, authUser);
-    loginMsg.textContent = "";
-    loginForm.reset();
-    await atualizarResumo();
+    registerMsg.textContent = "Conta criada. Entrando...";
+    registerMsg.style.color = "#1f5f39";
+    await executarLogin(username, password);
+    registerForm.reset();
   } catch (error) {
-    loginMsg.textContent = error.message;
-    loginMsg.style.color = "#b42318";
+    registerMsg.textContent = error.message;
+    registerMsg.style.color = "#b42318";
   }
 }
 
@@ -387,6 +432,7 @@ async function fazerLogout() {
 
 form.addEventListener("submit", salvarDemanda);
 loginForm.addEventListener("submit", fazerLogin);
+registerForm.addEventListener("submit", criarConta);
 btnLogout.addEventListener("click", fazerLogout);
 filtroLancamentos.addEventListener("input", aplicarFiltro);
 

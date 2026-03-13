@@ -85,6 +85,34 @@ body {
   min-height: auto;
 }
 
+.register-box {
+  border-top: 1px solid var(--line);
+  margin: 0 1rem 0.5rem;
+  padding-top: 0.55rem;
+}
+
+.register-box summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent-2);
+  list-style: none;
+}
+
+.register-box summary::-webkit-details-marker {
+  display: none;
+}
+
+.register-form {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+
+.register-msg {
+  padding: 0;
+  margin-top: 0.45rem;
+}
+
 .user-info {
   display: none;
   align-items: center;
@@ -94,6 +122,10 @@ body {
 }
 
 .auth-box.logged-in .login-form {
+  display: none;
+}
+
+.auth-box.logged-in .register-box {
   display: none;
 }
 
