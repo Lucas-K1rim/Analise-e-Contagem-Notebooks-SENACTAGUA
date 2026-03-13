@@ -26,6 +26,7 @@ if (!fs.existsSync(dbDir)) {
 
 const dataPath = path.join(dbDir, "demandas.json");
 const usersPath = path.join(dbDir, "users.json");
+const professoresPath = path.join(dbDir, "professores.json");
 
 const authSessions = new Map();
 
@@ -40,6 +41,28 @@ if (!fs.existsSync(usersPath)) {
       [
         { username: "admin", password: "adm@2026", nome: "Administrador" },
         { username: "professor", password: "senac123", nome: "Professor" },
+      ],
+      null,
+      2
+    ),
+    "utf8"
+  );
+}
+
+if (!fs.existsSync(professoresPath)) {
+  fs.writeFileSync(
+    professoresPath,
+    JSON.stringify(
+      [
+        { id: 1, nome: "Faculdade", turno: "noite" },
+        { id: 2, nome: "Tatiana", turno: "noite" },
+        { id: 3, nome: "Fanny", turno: "noite" },
+        { id: 4, nome: "Lidiane", turno: "noite" },
+        { id: 5, nome: "Luzineide", turno: "noite" },
+        { id: 6, nome: "Lewester", turno: "noite" },
+        { id: 7, nome: "Alvaro", turno: "noite" },
+        { id: 8, nome: "Flavio", turno: "noite" },
+        { id: 9, nome: "Nara", turno: "noite" }
       ],
       null,
       2
@@ -71,6 +94,29 @@ function readUsers() {
 
 function writeUsers(users) {
   fs.writeFileSync(usersPath, JSON.stringify(users, null, 2), "utf8");
+}
+
+function readProfessores() {
+  if (!fs.existsSync(professoresPath)) return [];
+  const raw = fs.readFileSync(professoresPath, "utf8");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeProfessores(professores) {
+  fs.writeFileSync(professoresPath, JSON.stringify(professores, null, 2), "utf8");
+}
+
+function normalizarTurno(turno) {
+  const valor = String(turno || "").trim().toLowerCase();
+  if (valor === "manha" || valor === "manhã") return "manha";
+  if (valor === "tarde") return "tarde";
+  if (valor === "noite") return "noite";
+  return "";
 }
 
 function readDemandas() {
@@ -178,6 +224,14 @@ async function initDb() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS professores (
+      id SERIAL PRIMARY KEY,
+      nome TEXT UNIQUE NOT NULL,
+      turno TEXT NOT NULL CHECK (turno IN ('manha', 'tarde', 'noite'))
+    );
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS demandas (
       id SERIAL PRIMARY KEY,
       professor TEXT NOT NULL,
@@ -203,6 +257,19 @@ async function initDb() {
        VALUES ($1, $2, $3)
        ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password, nome = EXCLUDED.nome`,
       [user.username, user.password, user.nome || user.username]
+    );
+  }
+
+  const localProfessores = readProfessores();
+  for (const prof of localProfessores) {
+    const nome = String(prof.nome || "").trim();
+    const turno = normalizarTurno(prof.turno || "noite") || "noite";
+    if (!nome) continue;
+    await pool.query(
+      `INSERT INTO professores (nome, turno)
+       VALUES ($1, $2)
+       ON CONFLICT (nome) DO UPDATE SET turno = EXCLUDED.turno`,
+      [nome, turno]
     );
   }
 
@@ -333,6 +400,70 @@ app.post("/api/logout", authMiddleware, (req, res) => {
 });
 
 app.use("/api", authMiddleware);
+
+app.get("/api/professores", async (req, res) => {
+  if (usePostgres) {
+    const result = await pool.query(
+      `SELECT id, nome, turno
+       FROM professores
+       ORDER BY nome ASC`
+    );
+    return res.json(result.rows);
+  }
+
+  const professores = readProfessores().sort((a, b) =>
+    String(a.nome || "").localeCompare(String(b.nome || ""))
+  );
+  return res.json(professores);
+});
+
+app.post("/api/professores", async (req, res) => {
+  const nome = String(req.body.nome || "").trim();
+  const turno = normalizarTurno(req.body.turno);
+
+  if (!nome) {
+    return res.status(400).json({ error: "Informe o nome do professor." });
+  }
+
+  if (!turno) {
+    return res.status(400).json({ error: "Turno invalido. Use manha, tarde ou noite." });
+  }
+
+  if (usePostgres) {
+    const exists = await pool.query("SELECT 1 FROM professores WHERE lower(nome) = lower($1)", [nome]);
+    if (exists.rows.length > 0) {
+      return res.status(409).json({ error: "Professor ja cadastrado." });
+    }
+
+    const insert = await pool.query(
+      `INSERT INTO professores (nome, turno)
+       VALUES ($1, $2)
+       RETURNING id, nome, turno`,
+      [nome, turno]
+    );
+
+    const locais = readProfessores();
+    if (!locais.some((p) => String(p.nome || "").toLowerCase() === nome.toLowerCase())) {
+      const nextId = locais.reduce((max, p) => Math.max(max, Number(p.id) || 0), 0) + 1;
+      locais.push({ id: nextId, nome, turno });
+      writeProfessores(locais);
+    }
+
+    return res.status(201).json(insert.rows[0]);
+  }
+
+  const professores = readProfessores();
+  if (professores.some((p) => String(p.nome || "").toLowerCase() === nome.toLowerCase())) {
+    return res.status(409).json({ error: "Professor ja cadastrado." });
+  }
+
+  const nextId = professores.reduce((max, p) => Math.max(max, Number(p.id) || 0), 0) + 1;
+  const novo = { id: nextId, nome, turno };
+  professores.push(novo);
+  writeProfessores(professores);
+
+  return res.status(201).json(novo);
+});
 
 app.post("/api/demandas", async (req, res) => {
   const { professor, quantidade, data, manual } = req.body;

@@ -208,12 +208,14 @@ label {
   font-weight: 500;
 }
 
-input {
+input,
+select {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.62rem 0.72rem;
   font-family: inherit;
   font-size: 1rem;
+  background: #fff;
 }
 
 button {
@@ -331,6 +333,14 @@ button {
   height: 18px;
 }
 
+.form-professor {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: 0.9rem;
+  align-items: end;
+  margin-bottom: 0.8rem;
+}
+
 .tipo-badge {
   display: inline-flex;
   align-items: center;
@@ -386,7 +396,8 @@ thead {
 }
 
 @media (max-width: 900px) {
-  .form-grid {
+  .form-grid,
+  .form-professor {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -406,7 +417,8 @@ thead {
   }
 
   .form-grid,
-  .kpis {
+  .kpis,
+  .form-professor {
     grid-template-columns: 1fr;
   }
 

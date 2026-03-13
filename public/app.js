@@ -18,6 +18,11 @@ const btnLogout = document.getElementById("btn-logout");
 
 const form = document.getElementById("form-demanda");
 const professorInput = document.getElementById("professor");
+const formProfessor = document.getElementById("form-professor");
+const novoProfessorInput = document.getElementById("novo-professor");
+const turnoProfessorInput = document.getElementById("turno-professor");
+const professorMsg = document.getElementById("professor-msg");
+const tabelaProfessoresCadastrados = document.getElementById("tabela-professores-cadastrados");
 const quantidadeInput = document.getElementById("quantidade");
 const dataInput = document.getElementById("data");
 const manualInput = document.getElementById("manual");
@@ -36,6 +41,7 @@ let authToken = localStorage.getItem("i9_token") || "";
 let authUser = localStorage.getItem("i9_user") || "";
 let graficoProfessores = null;
 let demandasCache = [];
+let professoresCache = [];
 
 function hojeIso() {
   return new Date().toISOString().slice(0, 10);
@@ -43,6 +49,56 @@ function hojeIso() {
 
 function mesAtualIso() {
   return new Date().toISOString().slice(0, 7);
+}
+
+function formatarTurno(turno) {
+  if (turno === "manha") return "Manhã";
+  if (turno === "tarde") return "Tarde";
+  return "Noite";
+}
+
+function preencherSelectProfessores(professores) {
+  const valorAtual = professorInput.value;
+  professorInput.innerHTML = "";
+
+  const optionDefault = document.createElement("option");
+  optionDefault.value = "";
+  optionDefault.textContent = "Selecione o professor";
+  professorInput.appendChild(optionDefault);
+
+  professores.forEach((prof) => {
+    const option = document.createElement("option");
+    option.value = prof.nome;
+    option.textContent = `${prof.nome} (${formatarTurno(prof.turno)})`;
+    professorInput.appendChild(option);
+  });
+
+  if (valorAtual && professores.some((prof) => prof.nome === valorAtual)) {
+    professorInput.value = valorAtual;
+  }
+}
+
+function preencherTabelaProfessoresCadastrados(professores) {
+  tabelaProfessoresCadastrados.innerHTML = "";
+
+  if (!professores.length) {
+    tabelaProfessoresCadastrados.innerHTML =
+      '<tr><td colspan="2">Nenhum professor cadastrado.</td></tr>';
+    return;
+  }
+
+  professores.forEach((prof) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${prof.nome}</td><td>${formatarTurno(prof.turno)}</td>`;
+    tabelaProfessoresCadastrados.appendChild(tr);
+  });
+}
+
+async function carregarProfessores() {
+  const professores = await apiFetch("/api/professores");
+  professoresCache = professores;
+  preencherSelectProfessores(professores);
+  preencherTabelaProfessoresCadastrados(professores);
 }
 
 function setLoginState(loggedIn, nome = "") {
@@ -252,16 +308,47 @@ async function excluirLancamento(id) {
   }
 }
 
-function renderizarGrafico(porProfessor) {
+function montarSeriesGrafico(demandas) {
+  const mapa = new Map();
+
+  demandas.forEach((item) => {
+    const professor = String(item.professor || "").trim() || "Sem nome";
+    if (!mapa.has(professor)) {
+      mapa.set(professor, { manual: 0, normal: 0, total: 0 });
+    }
+
+    const registro = mapa.get(professor);
+    const quantidade = Number(item.quantidade || 0);
+    if (item.manual) {
+      registro.manual += quantidade;
+    } else {
+      registro.normal += quantidade;
+    }
+    registro.total += quantidade;
+  });
+
+  const ordenado = Array.from(mapa.entries()).sort((a, b) => b[1].total - a[1].total);
+
+  return {
+    labels: ordenado.map(([professor]) => professor),
+    manuais: ordenado.map(([, valor]) => valor.manual),
+    normais: ordenado.map(([, valor]) => valor.normal),
+  };
+}
+
+function renderizarGrafico(demandas) {
   const canvas = document.getElementById("grafico-professores");
   if (!canvas) return;
 
-  const labels = porProfessor.map((item) => item.professor);
-  const valores = porProfessor.map((item) => item.total);
+  const series = montarSeriesGrafico(demandas);
+  const labels = series.labels;
+  const valoresManuais = series.manuais;
+  const valoresNormais = series.normais;
 
   if (graficoProfessores) {
     graficoProfessores.data.labels = labels;
-    graficoProfessores.data.datasets[0].data = valores;
+    graficoProfessores.data.datasets[0].data = valoresNormais;
+    graficoProfessores.data.datasets[1].data = valoresManuais;
     graficoProfessores.update();
     return;
   }
@@ -272,9 +359,15 @@ function renderizarGrafico(porProfessor) {
       labels,
       datasets: [
         {
-          label: "Quantidade total",
-          data: valores,
-          backgroundColor: "#2f7a4d",
+          label: "Normal",
+          data: valoresNormais,
+          backgroundColor: "#003878",
+          borderRadius: 6,
+        },
+        {
+          label: "Manual",
+          data: valoresManuais,
+          backgroundColor: "#f7941d",
           borderRadius: 6,
         },
       ],
@@ -284,10 +377,14 @@ function renderizarGrafico(porProfessor) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: { display: true },
       },
       scales: {
+        y: {
+          stacked: true,
+        },
         x: {
+          stacked: true,
           beginAtZero: true,
           ticks: { precision: 0 },
         },
@@ -318,7 +415,7 @@ async function atualizarResumo() {
   demandasCache = demandas;
   totalGeralEl.textContent = resumo.totalGeral;
   qtdeProfessoresEl.textContent = resumo.porProfessor.length;
-  renderizarGrafico(resumo.porProfessor);
+  renderizarGrafico(demandas);
   preencherTabelaProfessores(resumo.porProfessor);
   aplicarFiltro();
 }
@@ -392,6 +489,7 @@ async function fazerLogin(event) {
 
   try {
     await executarLogin(loginUsernameInput.value.trim(), loginPasswordInput.value);
+    await carregarProfessores();
   } catch (error) {
     loginMsg.textContent = error.message;
     loginMsg.style.color = "#b42318";
@@ -429,10 +527,41 @@ async function criarConta(event) {
     registerMsg.textContent = "Conta criada. Entrando...";
     registerMsg.style.color = "#1f5f39";
     await executarLogin(username, password);
+    await carregarProfessores();
     registerForm.reset();
   } catch (error) {
     registerMsg.textContent = error.message;
     registerMsg.style.color = "#b42318";
+  }
+}
+
+async function cadastrarProfessor(event) {
+  event.preventDefault();
+  professorMsg.textContent = "Cadastrando...";
+  professorMsg.style.color = "#1f5f39";
+
+  try {
+    const nome = novoProfessorInput.value.trim();
+    const turno = turnoProfessorInput.value;
+
+    const response = await fetch("/api/professores", {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ nome, turno }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.error || "Erro ao cadastrar professor.");
+    }
+
+    professorMsg.textContent = "Professor cadastrado com sucesso.";
+    formProfessor.reset();
+    turnoProfessorInput.value = "noite";
+    await carregarProfessores();
+  } catch (error) {
+    professorMsg.textContent = error.message;
+    professorMsg.style.color = "#b42318";
   }
 }
 
@@ -447,6 +576,7 @@ async function fazerLogout() {
 }
 
 form.addEventListener("submit", salvarDemanda);
+formProfessor.addEventListener("submit", cadastrarProfessor);
 loginForm.addEventListener("submit", fazerLogin);
 registerForm.addEventListener("submit", criarConta);
 btnLogout.addEventListener("click", fazerLogout);
@@ -481,7 +611,7 @@ mesInput.value = mesAtualIso();
 
 if (authToken && authUser) {
   setLoginState(true, authUser);
-  atualizarResumo().catch(() => {
+  Promise.all([carregarProfessores(), atualizarResumo()]).catch(() => {
     setLoginState(false);
   });
 } else {

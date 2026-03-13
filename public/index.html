@@ -59,13 +59,18 @@
           <button class="tab" data-tab="resumo" role="tab">
             Total do Mês
           </button>
+          <button class="tab" data-tab="professores" role="tab">
+            Professores
+          </button>
         </div>
 
         <div id="lancamentos" class="tab-panel active" role="tabpanel">
           <form id="form-demanda" class="form-grid">
             <label>
               Professor
-              <input type="text" id="professor" required placeholder="Ex: Alberto" />
+              <select id="professor" required>
+                <option value="">Selecione o professor</option>
+              </select>
             </label>
 
             <label>
@@ -145,6 +150,37 @@
                 </tr>
               </thead>
               <tbody id="tabela-lancamentos"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="professores" class="tab-panel" role="tabpanel">
+          <form id="form-professor" class="form-professor">
+            <label>
+              Nome do Professor
+              <input type="text" id="novo-professor" placeholder="Ex: Juliana" required />
+            </label>
+            <label>
+              Turno
+              <select id="turno-professor" required>
+                <option value="manha">Manhã</option>
+                <option value="tarde">Tarde</option>
+                <option value="noite" selected>Noite</option>
+              </select>
+            </label>
+            <button type="submit" class="primary">Cadastrar Professor</button>
+          </form>
+          <p id="professor-msg" class="message"></p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Professor</th>
+                  <th>Turno</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-professores-cadastrados"></tbody>
             </table>
           </div>
         </div>
